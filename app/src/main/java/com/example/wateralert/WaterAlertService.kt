@@ -1,57 +1,57 @@
 package com.example.wateralert
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
-import android.service.notification.NotificationListenerService
-import android.service.notification.StatusBarNotification
-import android.speech.tts.TextToSpeech
-import java.util.Locale
-
-/* 
-   ERROR: "Unresolved reference" for Service, Intent, IBinder, etc.
-   CAUSE: Missing import statements.
-   RESOLUTION: Added the necessary Android framework imports.
-*/
+import androidx.core.app.NotificationCompat
 
 class WaterAlertService : Service() {
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // background code goes here
-        return START_STICKY // tells android to restart if service killed
+
+    private val CHANNEL_ID = "WaterAlertServiceChannel"
+
+    /* This function runs when we start the service. It sets up the persistent notification. */
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+        val notification = createNotification()
+        // Start the service in the foreground so Android doesn't kill it
+        startForeground(1, notification)
     }
-    override fun onBind(intent: Intent): IBinder? = null
-}
 
-/* 
-   ERROR: "Unresolved reference" for NotificationListenerService and StatusBarNotification.
-   CAUSE: Missing imports for the notification service API.
-   RESOLUTION: Added android.service.notification.* imports.
-*/
+    /* This function is called when the service is told to start. */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // START_STICKY tells Android to restart the service if it gets killed by the system
+        return START_STICKY
+    }
 
-
-
-    override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        val packageName = sbn?.packageName
-        val text = sbn?.notification?.extras?.getCharSequence("android.text")?.toString() ?: ""
-        
-        // Example check for water keywords
-        if (text.contains("water", ignoreCase = true)) {
-            speakOut("Please drink water!")
+    /* This function creates a notification channel, which is required for Android 8.0 and above. */
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Water Alert Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(serviceChannel)
         }
     }
 
-    /* 
-       ERROR: "Unresolved reference speak" and "messageText"
-       CAUSE: Code was outside of a class/function and variables weren't defined.
-       RESOLUTION: Created a helper function 'speakOut' inside the class.
-    */
-    private fun speakOut(message: String) {
-        tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, null)
+    /* This function builds the actual notification that the user sees in their tray. */
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Water Alert Active")
+            .setContentText("Listening for water notifications...")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .build()
     }
 
-    override fun onDestroy() {
-        tts?.stop()
-        tts?.shutdown()
-        super.onDestroy()
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }
